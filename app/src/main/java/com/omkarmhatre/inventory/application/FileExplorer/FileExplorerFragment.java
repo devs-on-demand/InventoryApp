@@ -1,12 +1,20 @@
-package com.omkarmhatre.inventory.application.Utils;
+package com.omkarmhatre.inventory.application.FileExplorer;
 
-import android.app.Activity;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.util.ArrayList;
+
 import android.app.AlertDialog;
+import android.app.AlertDialog.Builder;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.DialogInterface;
+import android.os.Bundle;
 import android.os.Environment;
+import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -14,90 +22,50 @@ import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.TextView;
 
-import com.omkarmhatre.inventory.application.FileExplorer.FileExplorer;
-import com.omkarmhatre.inventory.application.Inventory.InventoryItem;
-import com.omkarmhatre.inventory.application.PriceBook.PriceBookEntry;
-import com.omkarmhatre.inventory.application.PriceBook.PriceBookFragment;
 import com.omkarmhatre.inventory.application.R;
+import com.omkarmhatre.inventory.application.Utils.PriceBookService;
 
-import java.io.File;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import butterknife.ButterKnife;
 
-public class PriceBookService {
-
-    private static PriceBookService instance;
-
-    private Activity activity;
-    private PriceBookFragment fragment;
-    private Context context;
-    private List<PriceBookEntry> priceBook = new ArrayList<>() ;
-
-    //File Explorer variables
+public class FileExplorerFragment extends Fragment implements View.OnClickListener{
 
     // Stores names of traversed directories
     ArrayList<String> str = new ArrayList<String>();
+
     // Check if the first level of the directory structure is the one showing
     private Boolean firstLvl = true;
+
     private static final String TAG = "F_PATH";
+
     private Item[] fileList;
     private File path = new File(Environment.getExternalStorageDirectory() + "");
     private String chosenFile;
-    ListAdapter fileExploreAdapter;
-    private File priceBookPath;
+    private static final int DIALOG_LOAD_FILE = 1000;
 
-    public static PriceBookService getInstance()
-    {
-        if(instance == null)
-        {
-            instance = new PriceBookService();
-        }
-        return instance;
+    ListAdapter adapter;
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        View rootView = inflater.inflate(R.layout.fragment_file_explorer, container, false);
+        ButterKnife.bind(this,rootView);
+
+        FloatingActionButton fab = rootView.findViewById(R.id.fab);
+        fab.setOnClickListener(this);
+
+        loadFileList();
+        showDialog(DIALOG_LOAD_FILE);
+        Log.d(TAG, path.getAbsolutePath());
+
+        return rootView;
     }
 
-    private PriceBookService() {
-
+    public static Fragment newInstance() {
+        FileExplorerFragment fragment = new FileExplorerFragment();
+        return fragment;
     }
 
-    public void instantiate(Activity activity, PriceBookFragment fragment, Context context)
-    {
-        this.activity=activity;
-        this.fragment=fragment;
-        this.context=context;
-    }
-
-    public void setPriceBook(List<PriceBookEntry> priceBook) {
-        this.priceBook = priceBook;
-    }
-
-    public List<PriceBookEntry> getPriceBook() {
-        return priceBook;
-    }
-
-    public InventoryItem checkInPriceBook(String upcCode)
-    {
-        InventoryItem inventoryItem=null;
-        for(PriceBookEntry item : priceBook)
-        {
-            if(item.getUpc().equals(upcCode))
-            {
-                return inventoryItem = new InventoryItem(item.getUpc(),item.getDescription());
-            }
-        }
-
-        return inventoryItem;
-    }
-
-
-    /**
-     * loadFileList
-     * Item
-     * showDialog
-     * methods needs to be shifted to File Explorer
-     */
-    public void loadFileList() {
+    private void loadFileList() {
         try {
             path.mkdirs();
         } catch (SecurityException e) {
@@ -146,7 +114,7 @@ public class PriceBookService {
             Log.e(TAG, "path does not exist");
         }
 
-        fileExploreAdapter = new ArrayAdapter<Item>(context,
+        adapter = new ArrayAdapter<Item>(getContext(),
                 R.layout.layout_directory_item, R.id.dirItemText,
                 fileList) {
             @Override
@@ -180,20 +148,20 @@ public class PriceBookService {
         }
     }
 
-    public Dialog showDialog() {
+    protected Dialog showDialog(int id) {
         Dialog dialog = null;
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        AlertDialog.Builder builder = new Builder(getContext());
 
         if (fileList == null) {
             Log.e(TAG, "No files loaded");
             dialog = builder.create();
             return dialog;
         }
-        int id=0;
+
         switch (id) {
-            default:
+            case DIALOG_LOAD_FILE:
                 builder.setTitle("Choose your file");
-                builder.setAdapter(fileExploreAdapter, new DialogInterface.OnClickListener() {
+                builder.setAdapter(adapter, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         chosenFile = fileList[which].file;
@@ -209,7 +177,7 @@ public class PriceBookService {
                             loadFileList();
 
                             //removeDialog(DIALOG_LOAD_FILE);
-                            showDialog();
+                            showDialog(DIALOG_LOAD_FILE);
                             Log.d(TAG, path.getAbsolutePath());
 
                         }
@@ -233,7 +201,7 @@ public class PriceBookService {
                             loadFileList();
 
                             //removeDialog(DIALOG_LOAD_FILE);
-                            showDialog();
+                            showDialog(DIALOG_LOAD_FILE);
                             Log.d(TAG, path.getAbsolutePath());
 
                         }
@@ -241,14 +209,14 @@ public class PriceBookService {
                         else {
                             // Perform action with file picked
 
-                            FileExplorer fileExplorer = new FileExplorer(activity);
+                            FileExplorer fileExplorer = new FileExplorer(getActivity());
 
                             // Pass the Selected File To File Explorer
                             //File priceBookFile=fileExplorer.explore();
                             try {
                                 //Read File
-                                openSelectedFile(fileExplorer,sel);
-
+                                PriceBookService.getInstance().setPriceBook(fileExplorer.readCSVFile(sel));
+                                //AppService.notifyUser(v,"You can load the price book");
                             } catch (IOException e) {
                                 Log.wtf("omk",e.getMessage());
                                 //AppService.notifyUser(v,"Price Book Generation Failed !");
@@ -264,17 +232,9 @@ public class PriceBookService {
         return dialog;
     }
 
-    private void openSelectedFile(FileExplorer fileExplorer, File file) throws IOException {
-        PriceBookService.getInstance().setPriceBook(fileExplorer.readCSVFile(file));
-        priceBookPath=file;
-        if(priceBook.isEmpty())
-        {
-            //notify user to add items in price book
-            AppService.notifyUser(activity.getCurrentFocus(),"Please fill in some data in file");
-            return;
-        }
-        fragment.showPriceBook();
-        AppService.notifyUser(activity.getCurrentFocus(),"Price Book Imported successfully.");
+    @Override
+    public void onClick(View v) {
+        showDialog(DIALOG_LOAD_FILE);
     }
 
 }

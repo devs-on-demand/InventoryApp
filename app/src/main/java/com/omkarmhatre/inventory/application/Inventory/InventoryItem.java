@@ -4,13 +4,18 @@ public class InventoryItem {
 
     private String upc;
     private String description;
-    private int quantity;
-    private int lastQuantity;
+    private int quantity=0;
+    private int lastQuantity=0;
 
     public InventoryItem(String upc, String description, int quantity) {
-        this.upc = upc;
-        this.description = description;
+        this.upc = upc.equals("") ? "": upc;
+        this.description = description.equals("") ? "": description;
         this.quantity = quantity;
+    }
+
+    private String notifyUser() {
+
+        return "";
     }
 
     public InventoryItem(String upc, String description) {
